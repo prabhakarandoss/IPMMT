@@ -1,0 +1,241 @@
+import java.awt.BorderLayout;
+import java.awt.Container;
+import java.awt.GridLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Properties;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+
+/**
+* Program Driver.
+*/
+public class IpToMac
+{
+	
+	public static void main(String[] args)
+	{
+		TextFieldValidationFrame frame = new TextFieldValidationFrame();
+		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frame.show();
+	}
+}
+
+/**
+* A frame with a text area and components for search/replace.
+*/
+class TextFieldValidationFrame extends JFrame
+{
+	public static final int DEFAULT_WIDTH = 600;
+	public static final int DEFAULT_HEIGHT = 400;
+	public JPanel panel;
+
+	private JFrame mainFrame;
+	private JTextArea textArea;
+	private JTextField ipFromAddressFld;
+	private JTextField ipToAddressFld;
+	private JTextField macAddressFld;
+	private String errMessage;
+	
+public TextFieldValidationFrame()
+{
+
+	setTitle("IPMMT");
+	setSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+	
+	Container contentPane = getContentPane();
+	
+	panel = new JPanel();
+	panel.setLayout(new GridLayout(1,5));
+	
+	// Add button, text fields and labels
+	
+	panel.add(new JLabel("IP Rage - From IP : "));
+	ipFromAddressFld = new JTextField("IP Starts with", 1);
+	panel.add(ipFromAddressFld);
+	
+	panel.add(new JLabel("To IP : "));
+	ipToAddressFld = new JTextField("IP Ends with", 1);
+	panel.add(ipToAddressFld);
+	
+/*	panel.add(new JLabel("Mac Address"));
+	macAddressFld = new JTextField(" ", 22);
+	panel.add(macAddressFld);*/
+	
+	JButton testButton = new JButton("Scan IP");
+	panel.add(testButton);
+	testButton.addActionListener(new TestAction());
+	contentPane.add(panel);
+	
+	// Add text area with scroll bars
+	
+	textArea = new JTextArea(10,40);
+	textArea.setText("Output to be displayed here.");
+	JScrollPane scrollPane = new JScrollPane(textArea);
+	contentPane.add(scrollPane, BorderLayout.SOUTH);
+
+}
+
+
+/**
+* The action listener for the Apply/Test button.
+*/
+private class TestAction implements ActionListener
+{
+	public void actionPerformed(ActionEvent event)
+	{
+		String f = ipToAddressFld.getText();
+		doValidate(f);
+
+		if (errMessage != null)
+		{
+			showError(errMessage);
+		}
+		else
+		{
+		
+			 	InetAddress host = null;
+				try {
+					host = InetAddress.getByName(f);
+
+				} catch (UnknownHostException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				
+//			macAddressFld.setText(doIpMacConversion(f));
+				Properties prop = System.getProperties();
+				Set<Object> keySet = prop.keySet();
+				for (Object obj : keySet) {
+//					System.out.println("System Property: {"	+ obj.toString() + "," + System.getProperty(obj.toString()) + "}");
+					
+				}
+//				System.out.println(prop.toString());
+				textArea.setText(doIpMacConversion(f)+"||"+host.getHostName());
+		}
+	}
+}
+
+	/**
+	* Validate IP Address
+	* @param Object - string to be validated
+	* @return Error message that can be null or String
+	*/
+	private String doValidate(final Object forValidation)
+	{
+		boolean isValid = true;
+		errMessage = null;
+		Pattern pattern = null;
+		String ipPattern = null;
+		// 123.123.123.123
+		ipPattern = "^[0-2]?[0-9][0-9]\\.[0-2]?[0-9][0-9]\\.[0-2]?[0-9][0-9]\\.[0-2]?[0-9][0-9]$";
+		// 1.1.1.1
+		ipPattern = "^[0-2]?[0-9]*[0-9]*\\.[0-2]?[0-9]*[0-9]*\\.[0-2]?[0-9]*[0-9]*\\.[0-2]?[0-9]*[0-9]*$";
+		// first digit must exist - allows for 0.0.0.0
+		// but it also allows for 259.258.257.256
+		ipPattern = "^[0-2]+[0-9]*[0-9]*\\.[0-2]+[0-9]*[0-9]*\\.[0-2]+[0-9]*[0-9]*\\.[0-2]+[0-9]*[0-9]*$";
+		// complete validation - try to correct previous
+		ipPattern = "(([0-1]+[0-9]{1,2}\\.)|(2[0-4][0-9]\\.)|(25[0-5]\\.)){3}(([0-1]+[0-9]{1,2})|(2[0-4][0-9])|(25[0-5]))";
+		// I think this one is the most complete - please test
+		ipPattern = "(([0-1]?[0-9]{1,2}\\.)|(2[0-4][0-9]\\.)|(25[0-5]\\.)){3}(([0-1]?[0-9]{1,2})|(2[0-4][0-9])|(25[0-5]))";
+		//ipPattern = "((2([0-4]\\d|5[0-5])|1?\\d{1,2})(\\.2([0-4]\\d|5[0-5])|1?\\d{1,2}){3})";
+		//ipPattern = "((2([0-4]\\d|5[0-5])|1+\\d{1,2})(\\.2([0-4]\\d|5[0-5])|1+\\d{1,2}){3})";
+		try
+		{
+			pattern = Pattern.compile(ipPattern);
+		}
+		catch (PatternSyntaxException exception)
+		{
+			textArea.setText("Pattern Syntax Error");
+			isValid = false;
+			errMessage = "Pattern Syntax Error";
+		}
+		// Empty IP
+		if (forValidation.equals("") || (forValidation == null))
+		{
+			isValid = false;
+			errMessage = "IP Field is empty";
+			return errMessage;
+		}
+		// check if all characters are valid (numeric and .)
+		// using regular expression
+		
+		Matcher myMatcher = pattern.matcher(forValidation.toString());
+		if (!myMatcher.matches())
+		{
+			isValid = false;
+			errMessage = "IP Addres - Wrong Format";
+		}
+		// Add that it isn't greater than 255
+		// return isValid;
+		return errMessage;
+	}
+
+	/**
+	* Show error message (in Dialog Box or Text Area)
+	* @param String Error Message to be displayed
+	*/
+	private void showError(String errMsg)
+	{
+		JOptionPane.showMessageDialog(this,"Validation Error\n" +errMsg, errMsg, JOptionPane.INFORMATION_MESSAGE);
+//		textArea.setText(errMsg);
+	}
+
+	/**
+	* Convert IP Address to MAC Address
+	* @param String - IP Address to be converted
+	* @return String - Corresponding MAC Address or null
+	*/
+	private String doIpMacConversion(final String ipAddress)
+	{
+			/* Returns the MAC address of the computer.
+			* This is Windows based currently
+			*/
+			String macAddress = null;
+			String os = System.getProperty("os.name");
+			if ( os != null && os.startsWith("Windows"))
+			{
+				try
+				{
+					String pingCmd = "cmd.exe /c ping -n 1 " + ipAddress ;
+					Process pingP = Runtime.getRuntime().exec(pingCmd);
+					
+					String arpCmd = "cmd.exe /c arp -a " + ipAddress ;
+					Process arpP = Runtime.getRuntime().exec(arpCmd);
+					BufferedReader br = new BufferedReader(new InputStreamReader(arpP.getInputStream()));
+					String line;
+					while ((line = br.readLine()) != null)
+					{
+					if (line.indexOf(ipAddress) > 0)
+					{
+					int index = 24;
+					macAddress = line.substring(index, 45);
+					break;
+					}
+					}
+					br.close();
+					return macAddress;
+				}
+				catch (IOException e) { }
+			}
+			// return Null or Corresponding Mac Address
+			return macAddress;
+	}
+
+} 
